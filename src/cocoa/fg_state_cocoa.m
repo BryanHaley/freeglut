@@ -19,6 +19,7 @@
 
 #include <GL/freeglut.h>
 #include "../fg_internal.h"
+#import "fg_moogl_cocoa.h"
 
 #import <Cocoa/Cocoa.h>
 
@@ -144,7 +145,7 @@ int fgPlatformGlutGet( GLenum eWhat )
         return 0;
 
     case GLUT_WINDOW_NUM_SAMPLES: {
-        NSOpenGLPixelFormat *pixelFormat = fgStructure.CurrentWindow->Window.pContext.PixelFormat;
+        FGMGLPixelFormat *pixelFormat = fgStructure.CurrentWindow->Window.pContext.PixelFormat;
         GLint                samples     = 0;
         [pixelFormat getValues:&samples forAttribute:NSOpenGLPFASamples forVirtualScreen:0];
         return samples;
@@ -156,28 +157,28 @@ int fgPlatformGlutGet( GLenum eWhat )
     }
 
     case GLUT_WINDOW_DOUBLEBUFFER: {
-        NSOpenGLPixelFormat *pixelFormat = fgStructure.CurrentWindow->Window.pContext.PixelFormat;
+        FGMGLPixelFormat *pixelFormat = fgStructure.CurrentWindow->Window.pContext.PixelFormat;
         GLint                value       = 0;
         [pixelFormat getValues:&value forAttribute:NSOpenGLPFADoubleBuffer forVirtualScreen:0];
         return value;
     }
 
     case GLUT_WINDOW_BUFFER_SIZE: {
-        NSOpenGLPixelFormat *pixelFormat = fgStructure.CurrentWindow->Window.pContext.PixelFormat;
+        FGMGLPixelFormat *pixelFormat = fgStructure.CurrentWindow->Window.pContext.PixelFormat;
         GLint                colorSize   = 0;
         [pixelFormat getValues:&colorSize forAttribute:NSOpenGLPFAColorSize forVirtualScreen:0];
         return colorSize;
     }
 
     case GLUT_WINDOW_STENCIL_SIZE: {
-        NSOpenGLPixelFormat *pixelFormat = fgStructure.CurrentWindow->Window.pContext.PixelFormat;
+        FGMGLPixelFormat *pixelFormat = fgStructure.CurrentWindow->Window.pContext.PixelFormat;
         GLint                value       = 0;
         [pixelFormat getValues:&value forAttribute:NSOpenGLPFAStencilSize forVirtualScreen:0];
         return value;
     }
 
     case GLUT_WINDOW_DEPTH_SIZE: {
-        NSOpenGLPixelFormat *pixelFormat = fgStructure.CurrentWindow->Window.pContext.PixelFormat;
+        FGMGLPixelFormat *pixelFormat = fgStructure.CurrentWindow->Window.pContext.PixelFormat;
         GLint                value       = 0;
         [pixelFormat getValues:&value forAttribute:NSOpenGLPFADepthSize forVirtualScreen:0];
         return value;
@@ -186,7 +187,7 @@ int fgPlatformGlutGet( GLenum eWhat )
     case GLUT_WINDOW_RED_SIZE:
     case GLUT_WINDOW_GREEN_SIZE:
     case GLUT_WINDOW_BLUE_SIZE: {
-        NSOpenGLPixelFormat *pixelFormat = fgStructure.CurrentWindow->Window.pContext.PixelFormat;
+        FGMGLPixelFormat *pixelFormat = fgStructure.CurrentWindow->Window.pContext.PixelFormat;
         GLint                colorSize   = 0;
         [pixelFormat getValues:&colorSize forAttribute:NSOpenGLPFAColorSize forVirtualScreen:0];
         /* Assuming equal distribution for RGBA components */
@@ -194,7 +195,7 @@ int fgPlatformGlutGet( GLenum eWhat )
     }
 
     case GLUT_WINDOW_ALPHA_SIZE: {
-        NSOpenGLPixelFormat *pixelFormat = fgStructure.CurrentWindow->Window.pContext.PixelFormat;
+        FGMGLPixelFormat *pixelFormat = fgStructure.CurrentWindow->Window.pContext.PixelFormat;
         GLint                value       = 0;
         [pixelFormat getValues:&value forAttribute:NSOpenGLPFAAlphaSize forVirtualScreen:0];
         return value;
@@ -204,7 +205,7 @@ int fgPlatformGlutGet( GLenum eWhat )
     case GLUT_WINDOW_ACCUM_GREEN_SIZE:
     case GLUT_WINDOW_ACCUM_BLUE_SIZE:
     case GLUT_WINDOW_ACCUM_ALPHA_SIZE: {
-        NSOpenGLPixelFormat *pixelFormat = fgStructure.CurrentWindow->Window.pContext.PixelFormat;
+        FGMGLPixelFormat *pixelFormat = fgStructure.CurrentWindow->Window.pContext.PixelFormat;
         GLint                accumSize   = 0;
         [pixelFormat getValues:&accumSize forAttribute:NSOpenGLPFAAccumSize forVirtualScreen:0];
         /* Assuming equal distribution for RGBA components in accumulation buffer */
@@ -212,7 +213,7 @@ int fgPlatformGlutGet( GLenum eWhat )
     }
 
     case GLUT_WINDOW_STEREO: {
-        NSOpenGLPixelFormat *pixelFormat = fgStructure.CurrentWindow->Window.pContext.PixelFormat;
+        FGMGLPixelFormat *pixelFormat = fgStructure.CurrentWindow->Window.pContext.PixelFormat;
         GLint                value       = 0;
         [pixelFormat getValues:&value forAttribute:NSOpenGLPFAStereo forVirtualScreen:0];
         return value;
@@ -265,7 +266,7 @@ int *fgPlatformGlutGetModeValues( GLenum eWhat, int *size )
         for ( int auxCount = 0; auxCount <= MAX_AUX_BUFFERS; auxCount++ ) {
             NSOpenGLPixelFormatAttribute attrs[] = { NSOpenGLPFAAccelerated, NSOpenGLPFAAuxBuffers, auxCount, 0 };
 
-            NSOpenGLPixelFormat *pixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:attrs];
+            FGMGLPixelFormat *pixelFormat = [[FGMGLPixelFormat alloc] initWithAttributes:attrs];
             if ( pixelFormat != nil ) {
                 GLint actualAuxBuffers = 0;
                 [pixelFormat getValues:&actualAuxBuffers forAttribute:NSOpenGLPFAAuxBuffers forVirtualScreen:0];
@@ -298,7 +299,7 @@ int *fgPlatformGlutGetModeValues( GLenum eWhat, int *size )
                 queryModes[i],
                 0 };
 
-            NSOpenGLPixelFormat *pixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:attrs];
+            FGMGLPixelFormat *pixelFormat = [[FGMGLPixelFormat alloc] initWithAttributes:attrs];
             if ( pixelFormat != nil ) {
                 GLint actualSamples = 0;
                 [pixelFormat getValues:&actualSamples forAttribute:NSOpenGLPFASamples forVirtualScreen:0];

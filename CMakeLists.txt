@@ -259,6 +259,8 @@ ELSEIF(FREEGLUT_COCOA)
         src/cocoa/fg_spaceball_cocoa.m
         src/cocoa/fg_state_cocoa.m
         src/cocoa/fg_window_cocoa.m
+        src/cocoa/fg_moogl_cocoa.m
+        src/cocoa/fg_moogl_cocoa.h
         # c files
         src/cocoa/fg_ext_cocoa.c
         src/cocoa/fg_glut_definitions_cocoa.c
@@ -418,7 +420,10 @@ ELSE()
         LIST(APPEND LIBS OpenGL::EGL OpenGL::OpenGL)
       else()
         FIND_PACKAGE(OpenGL REQUIRED COMPONENTS OpenGL)
-        LIST(APPEND LIBS OpenGL::GL)
+        # with MooGL the Cocoa block below links it in place of Apple's OpenGL
+        if(NOT (FREEGLUT_COCOA AND MOOGL_LIBRARY))
+          LIST(APPEND LIBS OpenGL::GL)
+        endif()
       endif()
     else()
       FIND_PACKAGE(OpenGL REQUIRED)
@@ -509,7 +514,13 @@ ENDIF()
 IF(FREEGLUT_COCOA)
     FIND_PACKAGE(OpenGL REQUIRED)
     INCLUDE_DIRECTORIES(${OPENGL_INCLUDE_DIR})
-    FIND_LIBRARY(OPENGL_FRAMEWORK OpenGL)
+    # MooGL: OpenGL 4.6 on Metal in place of Apple's OpenGL
+    SET(MOOGL_LIBRARY "" CACHE FILEPATH "MooGL's libmoogl.dylib")
+    IF(MOOGL_LIBRARY)
+        SET(OPENGL_FRAMEWORK ${MOOGL_LIBRARY})
+    ELSE()
+        FIND_LIBRARY(OPENGL_FRAMEWORK OpenGL)
+    ENDIF()
     FIND_LIBRARY(COCOA_FRAMEWORK Cocoa)
     FIND_LIBRARY(IOKIT_FRAMEWORK IOKit)
     FIND_LIBRARY(COREVIDEO_FRAMEWORK CoreVideo)

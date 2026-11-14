@@ -20,6 +20,7 @@
 #define FREEGLUT_BUILDING_LIB
 #include <GL/freeglut.h>
 #include "../fg_internal.h"
+#import "fg_moogl_cocoa.h"
 
 #import <Cocoa/Cocoa.h>
 
@@ -95,7 +96,7 @@ static void fghCocoaContentOriginToFreeglut( const SFG_Window *window, NSRect co
  * OpenGL View Interface (aka prototype)                         *
  *****************************************************************/
 
-@interface                       fgOpenGLView : NSOpenGLView
+@interface                       fgOpenGLView : NSView
 @property ( assign ) SFG_Window *fgWindow;
 // Trackers for currently held keys.
 // Special and standard key codes overlap, so we need to track them separately.
@@ -307,11 +308,12 @@ static void fghCocoaContentOriginToFreeglut( const SFG_Window *window, NSRect co
     return (char)modifierKey;
 }
 
-- (instancetype)initWithFrame:(NSRect)frameRect pixelFormat:(NSOpenGLPixelFormat *)format
+- (instancetype)initWithFrame:(NSRect)frameRect pixelFormat:(FGMGLPixelFormat *)format
 {
     AUTORELEASE_POOL;
 
-    self = [super initWithFrame:frameRect pixelFormat:format];
+    (void)format;
+    self = [super initWithFrame:frameRect];
     if ( self ) {
         _pressedStandardKeys = [[NSMutableSet alloc] init];
         _pressedSpecialKeys  = [[NSMutableSet alloc] init];
@@ -918,17 +920,24 @@ static void fghCocoaContentOriginToFreeglut( const SFG_Window *window, NSRect co
  * Handle window resize events - notify freeglut
  */
 
+/* NSOpenGLView called reshape on a resize; a plain view has to */
+- (void)setFrameSize:(NSSize)newSize
+{
+    [super setFrameSize:newSize];
+    if ( self.fgWindow && self.fgWindow->Window.Context )
+        [self reshape];
+}
+
 - (void)reshape
 {
     AUTORELEASE_POOL;
-    [super reshape];
 
     if ( !self.fgWindow ) {
         fgError( "Freeglut window not set for %s", __func__ );
     }
 
     /* Sync the context with the new drawable size. */
-    [(NSOpenGLContext *)self.fgWindow->Window.Context update];
+    [(FGMGLContext *)self.fgWindow->Window.Context update];
 
     NSRect backingBounds = [self convertRectToBacking:[self bounds]];
 
@@ -937,17 +946,7 @@ static void fghCocoaContentOriginToFreeglut( const SFG_Window *window, NSRect co
     pWState->FrameBufferWidth        = (int)backingBounds.size.width;
     pWState->FrameBufferHeight       = (int)backingBounds.size.height;
 
-    /*
-     * Workaround for a macOS OpenGL driver quirk where the accumulation buffer is not automatically
-     * resized in sync with the window. The glClear must be performed here, before the application's
-     * reshape callback is invoked, to prevent rendering from being clipped to the old buffer
-     * dimensions.  The exact reason why this is required is still remains largely a mystery, but
-     * would love to understand it better.
-     */
-    GLint accBits = 0;
-    glGetIntegerv( GL_ACCUM_RED_BITS, &accBits );
-    if ( accBits > 0 )
-        glClear( GL_ACCUM_BUFFER_BIT );
+    /* MooGL has no accumulation buffer, so Apple's driver workaround for one is gone */
 
     /* Update state and call callback, if there was a change */
     if ( self.fgWindow->Parent ) {
@@ -1076,7 +1075,7 @@ static void fgOpenSubWindow( SFG_Window *window, int x, int y, int w, int h )
 
     NSWindow            *topLevelWindow = (NSWindow *)window->Parent->Window.Handle;
     fgOpenGLView        *parentView     = (fgOpenGLView *)window->Parent->Window.pContext.View;
-    NSOpenGLPixelFormat *pixelFormat    = window->Parent->Window.pContext.PixelFormat;
+    FGMGLPixelFormat *pixelFormat    = window->Parent->Window.pContext.PixelFormat;
 
     if ( !topLevelWindow || !parentView || !pixelFormat ) {
         fgError( "Invalid parent window for subwindow creation" );
@@ -1089,14 +1088,14 @@ static void fgOpenSubWindow( SFG_Window *window, int x, int y, int w, int h )
     if ( !openGLView ) {
         fgError( "Failed to create fgOpenGLView (subwindow)" );
     }
-    [openGLView setWantsBestResolutionOpenGLSurface:NO];
+    [openGLView setWantsBestResolutionOpenGLSurface:YES]; // freeglut works in backing pixels
     [parentView addSubview:openGLView];
     [openGLView updateTrackingAreas];
     openGLView.fgWindow = window;
 
-    NSOpenGLContext *glContext = [[NSOpenGLContext alloc] initWithFormat:pixelFormat shareContext:nil];
+    FGMGLContext *glContext = [[FGMGLContext alloc] initWithFormat:pixelFormat shareContext:nil];
     if ( !glContext ) {
-        fgError( "Failed to create NSOpenGLContext (subwindow)" );
+        fgError( "Failed to create FGMGLContext (subwindow)" );
     }
     [glContext setView:openGLView];
     [glContext makeCurrentContext];
@@ -1218,7 +1217,7 @@ void fgPlatformOpenWindow( SFG_Window *window,
         attrs[attrIndex++] = NSOpenGLProfileVersionLegacy;
     attrs[attrIndex++] = 0; // Null terminator
 
-    NSOpenGLPixelFormat *pixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:attrs];
+    FGMGLPixelFormat *pixelFormat = [[FGMGLPixelFormat alloc] initWithAttributes:attrs];
     if ( !pixelFormat ) {
         fgError( "Failed to create pixel format" );
     }
@@ -1258,7 +1257,7 @@ void fgPlatformOpenWindow( SFG_Window *window,
     //  - window size is correct
     //  - OpenGL viewport is correct
     //  - OpenGL framebuffer size is correct
-    [openGLView setWantsBestResolutionOpenGLSurface:NO];
+    [openGLView setWantsBestResolutionOpenGLSurface:YES]; // freeglut works in backing pixels
 
     //
     // 3. Create NSWindow and set fgOpenGLView as content view
@@ -1293,12 +1292,12 @@ void fgPlatformOpenWindow( SFG_Window *window,
     [nsWindow setDelegate:delegate];
 
     //
-    // 5. Create NSOpenGLContext, and associate it with the view
+    // 5. Create FGMGLContext, and associate it with the view
     //
 
-    NSOpenGLContext *glContext = [[NSOpenGLContext alloc] initWithFormat:pixelFormat shareContext:nil];
+    FGMGLContext *glContext = [[FGMGLContext alloc] initWithFormat:pixelFormat shareContext:nil];
     if ( !glContext ) {
-        fgError( "Failed to create NSOpenGLContext" );
+        fgError( "Failed to create FGMGLContext" );
     }
     [glContext setView:openGLView];
     window->Window.Context = glContext;
@@ -1380,9 +1379,9 @@ void fgPlatformCloseWindow( SFG_Window *window )
     AUTORELEASE_POOL;
 
     NSWindow            *nsWindow    = (NSWindow *)window->Window.Handle;
-    NSOpenGLContext     *context     = (NSOpenGLContext *)window->Window.Context;
+    FGMGLContext     *context     = (FGMGLContext *)window->Window.Context;
     fgWindowDelegate    *delegate    = (fgWindowDelegate *)[nsWindow delegate];
-    NSOpenGLPixelFormat *pixelFormat = window->Window.pContext.PixelFormat;
+    FGMGLPixelFormat *pixelFormat = window->Window.pContext.PixelFormat;
     fgOpenGLView        *view        = window->Window.pContext.View;
 
     // Unbind OpenGL context from the view
@@ -1626,9 +1625,9 @@ void fgPlatformSetWindow( SFG_Window *window )
     AUTORELEASE_POOL;
 
     if ( window && window->Window.Context ) {
-        [(NSOpenGLContext *)window->Window.Context makeCurrentContext];
+        [(FGMGLContext *)window->Window.Context makeCurrentContext];
     }
     else {
-        [NSOpenGLContext clearCurrentContext];
+        [FGMGLContext clearCurrentContext];
     }
 }

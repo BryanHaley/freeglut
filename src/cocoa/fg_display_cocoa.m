@@ -19,6 +19,7 @@
 
 #include <GL/freeglut.h>
 #include "../fg_internal.h"
+#import "fg_moogl_cocoa.h"
 
 #include <pthread.h>
 
@@ -83,7 +84,7 @@ void fgPlatformGlutSwapBuffers( SFG_PlatformDisplay *pDisplayPtr, SFG_Window *Cu
         /* The display just got refreshed, so we can swap the buffers */
     }
 
-    NSOpenGLContext *context = (NSOpenGLContext *)CurrentWindow->Window.Context;
+    FGMGLContext *context = (FGMGLContext *)CurrentWindow->Window.Context;
     [context flushBuffer]; // Swap buffers to present the frame
 }
 

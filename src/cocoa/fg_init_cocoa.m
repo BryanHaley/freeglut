@@ -21,6 +21,7 @@
 
 #include <GL/freeglut.h>
 #include "../fg_internal.h"
+#import "fg_moogl_cocoa.h"
 #include "../fg_init.h"
 
 #import <Cocoa/Cocoa.h>
@@ -183,7 +184,7 @@ void fgPlatformDestroyContext( SFG_PlatformDisplay pDisplay, SFG_WindowContextTy
 {
     AUTORELEASE_POOL;
 
-    NSOpenGLContext *context = (NSOpenGLContext *)MContext;
+    FGMGLContext *context = (FGMGLContext *)MContext;
     [context clearDrawable]; // Ensure the context is detached from any drawable
     [context release];
 }
